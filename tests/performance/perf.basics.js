@@ -4,9 +4,9 @@ module.exports = function (PouchDB, opts) {
 
   // need to use bluebird for promises everywhere, so we're comparing
   // apples to apples
-  var Promise = require('bluebird');
-
-  var utils = require('./utils');
+  var Promise = require('bluebird'),
+      utils = require('./utils'),
+      commonUtils = require('../common-utils.js');
 
   function createDocId(i) {
     var intString = i.toString();
@@ -84,9 +84,9 @@ module.exports = function (PouchDB, opts) {
       setup: function (db, callback) {
         var docs = [];
         for (var i = 0; i < 1000; i++) {
-          docs.push({_id : createDocId(i), foo : 'bar', baz : 'quux'});
+          docs.push({_id: createDocId(i), foo: 'bar', baz: 'quux'});
         }
-        db.bulkDocs({docs : docs}, callback);
+        db.bulkDocs({docs: docs}, callback);
       },
       test: function (db, itr, docs, done) {
         var tasks = [];
@@ -95,12 +95,48 @@ module.exports = function (PouchDB, opts) {
         }
         Promise.all(tasks.map(function (doc, i) {
           return db.allDocs({
-            startkey : createDocId(i * 100),
-            endkey : createDocId((i * 100) + 10)
+            startkey: createDocId(i * 100),
+            endkey: createDocId((i * 100) + 10)
           });
         })).then(function () {
           done();
         }, done);
+      }
+    },
+    {
+      name: 'pull-replication-perf',
+      assertions: 1,
+      iterations: 1,
+      setup: function (localDB, callback) {
+        var safeRandomDBName = function () {
+          return "test" + Math.random().toString().replace('.', '_');
+        };
+        var remoteCouchUrl =
+            commonUtils.couchHost() + "/" +
+            safeRandomDBName();
+        var remoteDB = new PouchDB(remoteCouchUrl, opts);
+        var docs = [];
+        for (var i = 0; i < opts.size; i++) {
+          docs.push({_id: createDocId(i),
+                     foo: Math.random(),
+                     bar: Math.random()});
+        }
+        remoteDB.bulkDocs({docs: docs})
+            .then(function () { return callback(null, remoteDB); });
+        Promise.all([]);
+      },
+      test: function (localDB, itr, remoteDB, done) {
+        PouchDB.replicate(remoteDB, localDB, {live: false, batch_size: 100})
+        .on('change', function (info) {
+        })
+        .on('complete', function (info) {
+          done();
+        })
+        .on('uptodate', function (info) {
+        })
+        .on('error', function (err) {
+          done(err);
+        });
       }
     }
   ];
