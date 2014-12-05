@@ -106,7 +106,7 @@ module.exports = function (PouchDB, opts) {
     {
       name: 'pull-replication-perf',
       assertions: 1,
-      iterations: 1,
+      iterations: 10,
       setup: function (localDB, callback) {
         var remoteCouchUrl =
               commonUtils.couchHost() + "/" +
@@ -114,13 +114,14 @@ module.exports = function (PouchDB, opts) {
             remoteDB = new PouchDB(remoteCouchUrl, opts),
             docs = [],
             localPouches = [],
-            i;
+            i,
+            numberDocs = 1000;
 
         for (i = 0; i < this.iterations; ++i) {
           localPouches[i] = new PouchDB(commonUtils.safeRandomDBName());
         }
 
-        for (i = 0; i < opts.size; i++) {
+        for (i = 0; i < numberDocs; i++) {
           docs.push({_id: createDocId(i),
                      foo: Math.random(),
                      bar: Math.random()});
