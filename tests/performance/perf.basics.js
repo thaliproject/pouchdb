@@ -17,130 +17,140 @@ module.exports = function (PouchDB, opts) {
   }
 
   var testCases = [
-    {
-      name: 'basic-inserts',
-      assertions: 1,
-      iterations: 1000,
-      setup: function (db, callback) {
-        callback(null, {'yo': 'dawg'});
-      },
-      test: function (db, itr, doc, done) {
-        db.post(doc, done);
-      }
-    }, {
-      name: 'bulk-inserts',
-      assertions: 1,
-      iterations: 100,
-      setup: function (db, callback) {
-        var docs = [];
-        for (var i = 0; i < 100; i++) {
-          docs.push({much : 'docs', very : 'bulk'});
-        }
-        callback(null, {docs : docs});
-      },
-      test: function (db, itr, docs, done) {
-        db.bulkDocs(docs, done);
-      }
-    }, {
-      name: 'basic-gets',
-      assertions: 1,
-      iterations: 10000,
-      setup: function (db, callback) {
-        var docs = [];
-        for (var i = 0; i < 10000; i++) {
-          docs.push({_id : createDocId(i), foo : 'bar', baz : 'quux'});
-        }
-        db.bulkDocs({docs : docs}, callback);
-      },
-      test: function (db, itr, docs, done) {
-        db.get(createDocId(itr), done);
-      }
-    }, {
-      name: 'all-docs-skip-limit',
-      assertions: 1,
-      iterations: 50,
-      setup: function (db, callback) {
-        var docs = [];
-        for (var i = 0; i < 1000; i++) {
-          docs.push({_id : createDocId(i), foo : 'bar', baz : 'quux'});
-        }
-        db.bulkDocs({docs : docs}, callback);
-      },
-      test: function (db, itr, docs, done) {
-        var tasks = [];
-        for (var i = 0; i < 10; i++) {
-          tasks.push(i);
-        }
-        Promise.all(tasks.map(function (doc, i) {
-          return db.allDocs({skip : i * 100, limit : 10});
-        })).then(function () {
-          done();
-        }, done);
-      }
-    }, {
-      name: 'all-docs-startkey-endkey',
-      assertions: 1,
-      iterations: 50,
-      setup: function (db, callback) {
-        var docs = [];
-        for (var i = 0; i < 1000; i++) {
-          docs.push({_id: createDocId(i), foo: 'bar', baz: 'quux'});
-        }
-        db.bulkDocs({docs: docs}, callback);
-      },
-      test: function (db, itr, docs, done) {
-        var tasks = [];
-        for (var i = 0; i < 10; i++) {
-          tasks.push(i);
-        }
-        Promise.all(tasks.map(function (doc, i) {
-          return db.allDocs({
-            startkey: createDocId(i * 100),
-            endkey: createDocId((i * 100) + 10)
-          });
-        })).then(function () {
-          done();
-        }, done);
-      }
-    },
+    //{
+    //  name: 'basic-inserts',
+    //  assertions: 1,
+    //  iterations: 1000,
+    //  setup: function (db, callback) {
+    //    callback(null, {'yo': 'dawg'});
+    //  },
+    //  test: function (db, itr, doc, done) {
+    //    db.post(doc, done);
+    //  }
+    //}, {
+    //  name: 'bulk-inserts',
+    //  assertions: 1,
+    //  iterations: 100,
+    //  setup: function (db, callback) {
+    //    var docs = [];
+    //    for (var i = 0; i < 100; i++) {
+    //      docs.push({much : 'docs', very : 'bulk'});
+    //    }
+    //    callback(null, {docs : docs});
+    //  },
+    //  test: function (db, itr, docs, done) {
+    //    db.bulkDocs(docs, done);
+    //  }
+    //}, {
+    //  name: 'basic-gets',
+    //  assertions: 1,
+    //  iterations: 10000,
+    //  setup: function (db, callback) {
+    //    var docs = [];
+    //    for (var i = 0; i < 10000; i++) {
+    //      docs.push({_id : createDocId(i), foo : 'bar', baz : 'quux'});
+    //    }
+    //    db.bulkDocs({docs : docs}, callback);
+    //  },
+    //  test: function (db, itr, docs, done) {
+    //    db.get(createDocId(itr), done);
+    //  }
+    //}, {
+    //  name: 'all-docs-skip-limit',
+    //  assertions: 1,
+    //  iterations: 50,
+    //  setup: function (db, callback) {
+    //    var docs = [];
+    //    for (var i = 0; i < 1000; i++) {
+    //      docs.push({_id : createDocId(i), foo : 'bar', baz : 'quux'});
+    //    }
+    //    db.bulkDocs({docs : docs}, callback);
+    //  },
+    //  test: function (db, itr, docs, done) {
+    //    var tasks = [];
+    //    for (var i = 0; i < 10; i++) {
+    //      tasks.push(i);
+    //    }
+    //    Promise.all(tasks.map(function (doc, i) {
+    //      return db.allDocs({skip : i * 100, limit : 10});
+    //    })).then(function () {
+    //      done();
+    //    }, done);
+    //  }
+    //}, {
+    //  name: 'all-docs-startkey-endkey',
+    //  assertions: 1,
+    //  iterations: 50,
+    //  setup: function (db, callback) {
+    //    var docs = [];
+    //    for (var i = 0; i < 1000; i++) {
+    //      docs.push({_id: createDocId(i), foo: 'bar', baz: 'quux'});
+    //    }
+    //    db.bulkDocs({docs: docs}, callback);
+    //  },
+    //  test: function (db, itr, docs, done) {
+    //    var tasks = [];
+    //    for (var i = 0; i < 10; i++) {
+    //      tasks.push(i);
+    //    }
+    //    Promise.all(tasks.map(function (doc, i) {
+    //      return db.allDocs({
+    //        startkey: createDocId(i * 100),
+    //        endkey: createDocId((i * 100) + 10)
+    //      });
+    //    })).then(function () {
+    //      done();
+    //    }, done);
+    //  }
+    //},
     {
       name: 'pull-replication-perf',
       assertions: 1,
       iterations: 1,
       setup: function (localDB, callback) {
-        var safeRandomDBName = function () {
-          return "test" + Math.random().toString().replace('.', '_');
-        };
         var remoteCouchUrl =
-            commonUtils.couchHost() + "/" +
-            safeRandomDBName();
-        var remoteDB = new PouchDB(remoteCouchUrl, opts);
-        var docs = [];
-        for (var i = 0; i < opts.size; i++) {
+              commonUtils.couchHost() + "/" +
+              commonUtils.safeRandomDBName(),
+            remoteDB = new PouchDB(remoteCouchUrl, opts),
+            docs = [],
+            localPouches = [],
+            i;
+
+        for (i = 0; i < this.iterations; ++i) {
+          localPouches[i] = new PouchDB(commonUtils.safeRandomDBName());
+        }
+
+        for (i = 0; i < opts.size; i++) {
           docs.push({_id: createDocId(i),
                      foo: Math.random(),
                      bar: Math.random()});
         }
-        remoteDB.bulkDocs({docs: docs})
-            .then(function () { return callback(null, remoteDB); });
-        Promise.all([]);
+
+        remoteDB.bulkDocs({docs: docs}).then(function () {
+          return callback(null,
+              { localPouches: localPouches, remoteDB: remoteDB});
+        });
       },
-      test: function (localDB, itr, remoteDB, done) {
+      test: function (ignoreDB, itr, localAndRemote, done) {
+        var localDB = localAndRemote.localPouches[itr],
+            remoteDB = localAndRemote.remoteDB;
+
         PouchDB.replicate(remoteDB, localDB, {live: false, batch_size: 100})
         .on('change', function (info) {
         })
-        .on('complete', function (info) {
-          done();
-        })
-        .on('uptodate', function (info) {
-        })
-        .on('error', function (err) {
-          done(err);
+        .on('complete', function () { done(); })
+        .on('error', done);
+      },
+      tearDown: function (ignoreDB, localAndRemote) {
+        return localAndRemote.remoteDB.destroy().then(function () {
+          return Promise.all(
+              localAndRemote.localPouches.map(function (localPouch) {
+                return localPouch.destroy();
+              }));
         });
       }
     }
   ];
 
   utils.runTests(PouchDB, 'basics', testCases, opts);
-
 };

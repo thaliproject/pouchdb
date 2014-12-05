@@ -15,4 +15,8 @@ commonUtils.couchHost = function () {
   return 'http://localhost:2020';
 };
 
+commonUtils.safeRandomDBName = function () {
+  return "test" + Math.random().toString().replace('.', '_');
+};
+
 module.exports = commonUtils;
