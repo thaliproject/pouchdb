@@ -19,4 +19,13 @@ commonUtils.safeRandomDBName = function () {
   return "test" + Math.random().toString().replace('.', '_');
 };
 
+commonUtils.portForThrottleReverseProxy = 3001;
+
+commonUtils.getRandomInt = function (min, max) {
+  /*jshint ignore:start */
+  // Taken from https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Math/random
+  /*jshint ignore:end */
+  return Math.floor(Math.random() * (max - min)) + min;
+};
+
 module.exports = commonUtils;

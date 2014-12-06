@@ -19,6 +19,11 @@ exports.runTests = function (PouchDB, suiteName, testCases, opts) {
         testCase.name.indexOf(grep) === -1) {
       return;
     }
+
+    if (testCase.iterations === 0) {
+      return;
+    }
+
     test('benchmarking', function (t) {
 
       var db;
