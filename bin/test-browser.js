@@ -35,7 +35,7 @@ var client = {
 
 var testRoot = 'http://127.0.0.1:8000/tests/';
 var testUrl = testRoot +
-  (process.env.PERF ? 'performance/test.html' : 'test.html');
+  (process.env.PERF ? 'performance/index.html' : 'integration/index.html');
 var qs = {};
 
 var sauceClient;
@@ -65,7 +65,7 @@ testUrl += '?';
 testUrl += querystring.stringify(qs);
 
 if (process.env.TRAVIS &&
-    client.browser !== 'firefox' &&
+    client.runner === 'saucelabs' &&
     process.env.TRAVIS_SECURE_ENV_VARS === 'false') {
   console.error('Not running test, cannot connect to saucelabs');
   process.exit(0);

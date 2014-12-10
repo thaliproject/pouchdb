@@ -410,6 +410,7 @@ All options default to `false` unless otherwise specified.
   * `options.attachments`: Include attachments.
 * `options.descending`: Reverse the order of the output documents.
 * `options.filter`: Reference a filter function from a design document to selectively get updates.
+* `options.doc_ids`: Only show changes for docs with these ids (array of strings).
 * `options.since`: Start the results from the change immediately after the given sequence number, you can also pass 'now' if you want only new changes.
 * `options.live`: Uses the  `_longpoll_` feed. 
 * `options.limit`: Limit the number of results to this number.
@@ -486,7 +487,7 @@ db.changes()
 
 * The `'complete'` event only fires when you aren't doing live changes. With live changes, use the `'uptodate'` event instead.
 * The `changes()` method was not an event emitter before PouchDB 2.2.0, and instead of the `'change'` and `'complete'` events it took `complete` and `onChange` function options. This is deprecated and could be removed in PouchDB version 3.
-* The `'since'`option formally took 'latest' but has been changed to 'now' to keep consistency with CouchDB, 'latest' is deprecated but will still work to ensure backwards compatibility.
+* The `'since'`option formerly took 'latest' but has been changed to 'now' to keep consistency with CouchDB. 'latest' is deprecated but will still work to ensure backwards compatibility.
 
 {% include anchor.html title="Replicate a database" hash="replication" %}
 
@@ -504,7 +505,7 @@ All options default to `false` unless otherwise specified.
 
 * `options.filter`: Reference a filter function from a design document to selectively get updates.
 * `options.query_params`: Query params sent to the filter function.
-* `options.doc_ids`: Only replicate docs with these ids.
+* `options.doc_ids`: Only replicate docs with these ids (array of strings).
 * `options.live`: If `true`, starts subscribing to future changes in the `source` database and continue replicating them.
 * `options.since`: Replicate changes after the given sequence number.
 * `options.create_target`: Create target database if it does not exist. Only for server replications.
@@ -745,7 +746,7 @@ All options default to `false` unless otherwise specified.
   * The name of a view in an existing design document (e.g. `'myview'` or `'mydesigndoc/myview'`).
 * `options.reduce`: Reduce function, or the string name of a built-in function: `'_sum'`, `'_count'`, or `'_stats'`.  Defaults to `false` (no reduce).
     * Tip: if you're not using a built-in, [you're probably doing it wrong](http://youtu.be/BKQ9kXKoHS8?t=865s).
-    * On local databases, `rereduce` will always be `false` (since it's single-node).
+    * PouchDB will always call your reduce function with rereduce == false. As for CouchDB, refer to the [CouchDB documentation](http://docs.couchdb.org/en/1.6.1/couchapp/views/intro.html).
 * `options.include_docs`: Include the document in each row in the `doc` field.
     - `options.conflicts`: Include conflicts in the `_conflicts` field of a doc.
   - `options.attachments`: Include attachment data.
@@ -1114,5 +1115,41 @@ PouchDB.plugin({
 });
 new PouchDB('foobar').sayMyName(); // prints "My name is foobar"
 {% endhighlight %}
+
+{% include anchor.html title="Debug mode" hash="debug_mode"%}
+
+PouchDB uses the [debug](https://www.npmjs.org/package/debug) module for fine-grained debug output.
+
+To enable debug mode, just call:
+
+{% highlight js %}
+PouchDB.debug.enable('*');
+{% endhighlight %}
+
+In your browser console, you should then see something like this:
+
+
+{% include img.html src="debug_mode.png" alt="Coloured Log Output" %}
+
+In Node.js, you can also set a command-line flag:
+
+{% highlight bash %}
+DEBUG=pouchdb:* node myscript.js
+{% endhighlight %}
+
+You can also enable debugging of specific modules. Currently we only have `pouchb:api` (API-level calls) and `pouchdb:http`  (HTTP requests):
+
+{% highlight js %}
+PouchDB.debug.enable('pouchdb:api'); // or
+PouchDB.debug.enable('pouchdb:http');
+{% endhighlight %}
+
+These settings are saved to the browser's LocalStorage. So to disable them, you must call:
+
+{% highlight js %}
+PouchDB.debug.disable();
+{% endhighlight %}
+
+Your users won't see debug output unless you explicitly call `PouchDB.debug.enable()` within your application code.
 
 [event emitter]: http://nodejs.org/api/events.html#events_class_events_eventemitter

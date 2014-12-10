@@ -5,9 +5,9 @@ title: Conflicts
 sidebar: guides_nav.html
 ---
 
-Conflicts are an unfortunate reality when dealing with distributed systems. And make no mistake: client-server *is* a distributed system.
+Conflicts are an unavoidable reality when dealing with distributed systems. And make no mistake: client-server *is* a distributed system.
 
-CouchDB and PouchDB differ from many other sync solutions, because they bring the issue of conflicts front-and-center. With PouchDB, how you handle conflicts is entirely under your control.
+CouchDB and PouchDB differ from many other sync solutions, because they bring the issue of conflicts front-and-center. With PouchDB, conflict resolution is entirely under your control.
 
 Two types of conflicts
 -------
@@ -44,22 +44,19 @@ In many cases, the most practical solution to the 409 problem is to simply re-tr
 
 ```js
 function upsert(db, docId, deltaFunc) {
-  return db.get(docId, function (err, doc) {
-    if (err) {
-      if (err.status !== 404) {
-        // some error other than "not found"
-        return reject(err);
-      }
-      doc = {_id : docId};
+  return db.get(docId).catch(function (err) {
+    if (err.status !== 404) { // some error other than "not found"
+      throw err;
     }
-    fulfill(tryAndPut(db, deltaFunc(doc), deltaFunc));
+    return {_id : docId}; // default doc
+  }).then(function (doc) {
+    return tryAndPut(db, deltaFunc(doc), deltaFunc);
   });
 }
 
 function tryAndPut(db, doc, deltaFunc) {
   return db.put(doc).catch(function (err) {
-    if (err.status !== 409) {
-      // some error other than "conflict"
+    if (err.status !== 409) { // some error other than "conflict"
       throw err;
     }
     return upsert(db, doc, deltaFunc);
@@ -69,7 +66,7 @@ function tryAndPut(db, doc, deltaFunc) {
 
 This `upsert()` function takes a `db`, a `docId`, and `deltaFunc`, where the `deltaFunc` is just a function that takes a document as input and outputs a new document.
 
-For instance, imagine your `upsert` simply increments some counter:
+For instance, imagine your `upsert` just increments some counter:
 
 ```js
 function delta(doc) {
@@ -82,18 +79,18 @@ upsert(db, 'my_id', delta).then(function () {
   // success!
 }).catch(function (err) {
   // error (not a 404 or 409)
-})
+});
 ```
 
 This code is simple and easy to use.
 
 ### Non-immediate conflicts
 
-Imagine two PouchDB databases that have both gone offline. The two separate users each make modifications to the same document, and then come back online at the same time. They have both successfuly committed changes to the same document, and their local databases did not throw 409 errors. What happens then?
+Imagine two PouchDB databases have both gone offline. The two users each make modifications to the same document, and then come back online at the same time. They both committed changes to the same document, and their local databases did not throw 409 errors. What happens then?
 
-This the classic "conflict" scenario, and CouchDB handles it very elegantly. By default, a winning revision will be chosen arbitrarily, so unfortunately one user will lose their data. However, since the replication history is stored, you can always go back in time and respond to the conflict.
+This is the classic "conflict" scenario, and CouchDB handles it very elegantly. By default, CouchDB will choose an arbitrary winner based on a deterministic algorithm, which means both users will see the same winner once they're back online. However, since the replication history is stored, you can always go back in time to resolve the conflict.
 
-To detect if a document is in conflict, you simply use the `{conflicts: true}` option when you `get()` it.
+To detect if a document is in conflict, you use the `{conflicts: true}` option when you `get()` it.
 
 ```js
 db.get('docid', {conflicts: true}).then(function (doc) {
@@ -131,12 +128,23 @@ db.get('docid', {rev: '2-f3d4c66dcd7596419c76b2498b3ba21f'}).then(function (doc)
 
 At this point, you can present both versions to the user, or resolve the conflict automatically using your preferred conflict resolution strategy: last write wins, first write wins, [RCS](https://www.gnu.org/software/rcs/), etc.
 
-To resolve the conflict, you simpy `put()` a new revision on top of the current winner.
+To mark a conflict as resolved, all you need to do is `remove()` the unwanted revisions. So for instance, to remove `'2-f3d4c66dcd7596419c76b2498b3ba21f'`, you would do:
+
+```js
+db.remove('docid', '2-f3d4c66dcd7596419c76b2498b3ba21f').then(function (doc) {
+  // yay, we're done
+}).catch(function (err) {
+  // handle any errors
+});
+```
+
+If you want to resolve the conflict by creating a new revision, you simply `put()` a new document on top of the current winner.
+
 
 Accountants don't use erasers
 -------
 
-Another conflict resolution strategy is to simply design your database so that conflicts are impossible. In practice, this means that you never update or remove existing documents &ndash; you simply create new documents.
+Another conflict resolution strategy is to design your database so that conflicts are impossible. In practice, this means that you never update or remove existing documents &ndash; you only create new documents.
 
 This strategy has been called the "every doc is a delta" strategy. A classic use-case for this would be a checkbook app, where every document is simply an operation that increases or decreases the account balance:
 
@@ -148,7 +156,7 @@ This strategy has been called the "every doc is a delta" strategy. A classic use
 
 In this system, it is impossible for two documents to conflict, because the document `_id`s are just timestamps. Ledger transactions are recorded in the order they were made, and at the end of the day, you only need to do an `allDocs()` or `query()` operation to sum the result.
 
-The wisdom of this strategy can be expressed by the maxim: ["Accountants don't use erasers"](http://blogs.msdn.com/b/pathelland/archive/2007/06/14/accountants-don-t-use-erasers.aspx). Like a diligent accountant, your app can simply add new documents when you want to make a change, rather than going back and scrubbing out previous changes.
+The wisdom of this strategy can be expressed by the maxim: ["Accountants don't use erasers"](http://blogs.msdn.com/b/pathelland/archive/2007/06/14/accountants-don-t-use-erasers.aspx). Like a diligent accountant, your app can just add new documents when you want to make a change, rather than going back and scrubbing out previous changes.
 
 There is also a PouchDB plugin that implements this strategy: [delta-pouch](https://github.com/redgeoff/delta-pouch).
 

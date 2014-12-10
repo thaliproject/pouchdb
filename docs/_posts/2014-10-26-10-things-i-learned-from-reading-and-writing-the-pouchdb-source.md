@@ -45,7 +45,7 @@ User agent sniffing! Yes, we should be ashamed of ourselves. But here's why we d
 
 For the recored, here's what the dreaded Safari popup looks like:
 
-<img src='/static/img/safari_popup.png' alt='annoying Safari popup'/>
+{% include img.html src="safari_popup.png" alt="annoying Safari popup" %}
 
 So that's why we sniff for Android and only bump the size to 5000000 in those cases. In all other cases, we set it to 1.
 
@@ -386,6 +386,8 @@ db.createObjectStore('employees').createIndex('id', 'id', {unique: true});
 ```
 
 Better hope you choose the right one the first time! Otherwise you may get a constraint error when you don't expect one, or vice versa.
+
+**Edit:** As pointed out by [Simon Friis Vindum](https://twitter.com/paldepind/status/539012069061033984), you can use `add()` instead of `put()` to get a constraint error with keyPaths. Here's [a live example](http://bl.ocks.org/nolanlawson/c9a4673830de2b185b8b). Thanks for the tip!
 
 ### 10. CouchDB influenced IndexedDB influenced LevelDB influenced...
 

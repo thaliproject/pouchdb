@@ -84,7 +84,7 @@ or you can run:
 
     $ npm run dev
 
-and open [http://127.0.0.1:8000/tests/test.html](http://127.0.0.1:8000/tests/test.html) in your browser of choice. The performance tests are located @ [http://localhost:8000/tests/performance/test.html](http://localhost:8000/tests/performance/test.html).
+and open [http://127.0.0.1:8000/tests/integration/](http://127.0.0.1:8000/integration/) in your browser of choice. The performance tests are located @ [http://localhost:8000/tests/performance/](http://localhost:8000/tests/performance/).
 
 ### Test Options
 
@@ -103,6 +103,18 @@ or
     $ COUCH_HOST=http://user:pass@myname.host.com npm test
 
 For more information about options for testing including please checkout [TESTING.md](TESTING.md).
+
+Debugging PouchDB
+--------------------------------------
+
+PouchDB uses the `debug` [module](https://www.npmjs.org/package/debug) for debug
+logging, to turn on the log output enable the debug flag in node:
+
+    DEBUG=pouchdb:*
+
+Or in the browser:
+
+    PouchDB.debug.enable('pouchdb:*');
 
 Git Essentials
 --------------------------------------
@@ -152,11 +164,11 @@ Release Procedure
 
  * Copy the last release post from ./docs/_posts/date-pouchdb-version.md, ammend date and version and fill in release notes
  * Push release post
- * `./node_modules/.bin/tin -v $VERSION
+ * `./node_modules/.bin/tin -v $VERSION`
  * Put the new version in `lib/version-browser.js` too
  * `npm run release`
  * Copy the `dist/pouchdb*` files from the $VERSION tag on github, paste the release notes and add the distribution files to Github Releases, rename `pouchdb.min.js` to `pouchdb-$VERSION.min.js` after you upload it.
- * `./node_modules/.bin/tin -v $VERSION+1-prerelease
+ * `./node_modules/.bin/tin -v $VERSION+1-prerelease`
  * Put the new prerelease version in `lib/version-browser.js` too
  * Update docs/_config.yml to the current version
  * Push updated versions to master
