@@ -1,9 +1,9 @@
 'use strict';
 
-var reporter = require('./perf.reporter'),
-    test = require('tape'),
-    commonUtils = require('../common-utils.js'),
-    Promise = require('bluebird');
+var reporter = require('./perf.reporter');
+var test = require('tape');
+var commonUtils = require('../common-utils.js');
+var Promise = require('bluebird');
 
 var grep;
 if (global.window && global.window.location && global.window.location.search) {
