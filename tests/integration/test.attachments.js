@@ -171,6 +171,55 @@ adapters.forEach(function (adapter) {
       });
     });
 
+    it.only('checks that atts_since overrides attachment', function() {
+      //var db = new PouchDB(dbs.name);
+      var db = new PouchDB("http://127.0.0.1:5984/delme");
+
+      return db.get(binAttDoc._id).then(function(response) {
+        return db.remove(response._id, response._rev)
+      }).then(function() {
+        db.put(binAttDoc).then(function(response) {
+          return db.get(binAttDoc._id, {
+            attachments: true,
+            ajax: {
+              headers: {
+                'atts_since': [response.rev]
+              },
+              proxy: "http://127.0.0.1:8888"
+            }
+          })
+        }).then(function(doc) {
+          doc._attachments.should.deep.equal({
+            "foo.txt": {
+              "content_type": "text/plain",
+              "stub": true,
+              length: 29
+            }
+          });
+        })
+      });
+
+      return db.put(binAttDoc).then(function(response) {
+        return db.get(binAttDoc._id, {
+          attachments: true,
+          ajax: {
+            headers: {
+              'atts_since': [response.rev]
+            },
+            proxy: "http://127.0.0.1:8888"
+          }
+        })
+      }).then(function(doc) {
+        doc._attachments.should.deep.equal({
+          "foo.txt": {
+            "content_type": "text/plain",
+            "stub": true,
+            length: 29
+          }
+        });
+      });
+    });
+
     it('Measures length correctly after put()', function () {
       var db = new PouchDB(dbs.name);
       return db.put(binAttDoc).then(function () {
