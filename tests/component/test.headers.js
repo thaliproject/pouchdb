@@ -52,7 +52,7 @@ describe('test.headers.js', function () {
 
   it('Test that we combine ajax options both globally and locally on GET',
       function() {
-    var opts = { ajax: { headers: { aheader: "whyyes" } };
+    var opts = { ajax: { headers: { aheader: "whyyes" } } };
     var pouchDB = new PouchDB('http://127.0.0.1:' + PORT, opts);
     var getOpts = { ajax: { headers: { ick: "slick", aheader: "override!" } } };
     return pouchDB.get("fake", getOpts).
