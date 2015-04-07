@@ -240,7 +240,7 @@ adapters.forEach(function (adapter) {
         return db.get(binAttDoc._id, attsSince(thirdRev));
       }).then(function(doc) {
         doc._attachments.should.deep.equal(binAttDocStub);
-      })
+      });
     });
 
     it.only("delme", function() {
