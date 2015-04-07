@@ -255,8 +255,8 @@ adapters.forEach(function (adapter) {
       return db1.put({_id: id, foo: "bar"}).then(function(response) {
         db1Rev = response.rev;
         // Synch db1 to db2
-        return db2.replicate.from(db1);
-//        return db1.replicate.to(db2, {create_target: true});
+  //      return db2.replicate.from(db1);
+        return db1.replicate.to(db2, {create_target: true});
       }).then(function(response) {
         // Edit "arg" in db1
         return db2.put({db1: "change in db1"}, id, db1Rev);
