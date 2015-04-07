@@ -1,5 +1,6 @@
 'use strict';
 
+var utils = require('../../lib/utils');
 var adapters = ['local', 'http'];
 var repl_adapters = [
   ['local', 'http'],
@@ -50,6 +51,15 @@ adapters.forEach(function (adapter) {
         }
       }
     };
+
+    var binAttDocStub = {
+      "foo.txt": {
+        "content_type": "text/plain",
+        "stub": true,
+        length: 29
+      }
+    };
+
     // empty attachment
     var binAttDoc2 = {
       _id: 'bin_doc2',
@@ -171,53 +181,181 @@ adapters.forEach(function (adapter) {
       });
     });
 
-    it.only('checks that atts_since overrides attachment', function() {
+    it('checks that atts_since overrides attachment', function() {
       //var db = new PouchDB(dbs.name);
       var db = new PouchDB("http://127.0.0.1:5984/delme");
 
       return db.get(binAttDoc._id).then(function(response) {
-        return db.remove(response._id, response._rev)
+        return db.remove(response._id, response._rev);
       }).then(function() {
-        db.put(binAttDoc).then(function(response) {
-          return db.get(binAttDoc._id, {
-            attachments: true,
-            ajax: {
-              headers: {
-                'atts_since': [response.rev]
-              },
-              proxy: "http://127.0.0.1:8888"
-            }
-          })
-        }).then(function(doc) {
-          doc._attachments.should.deep.equal({
-            "foo.txt": {
-              "content_type": "text/plain",
-              "stub": true,
-              length: 29
-            }
-          });
-        })
-      });
-
-      return db.put(binAttDoc).then(function(response) {
+        return db.put(binAttDoc);
+      }).then(function(response) {
         return db.get(binAttDoc._id, {
           attachments: true,
-          ajax: {
-            headers: {
-              'atts_since': [response.rev]
-            },
-            proxy: "http://127.0.0.1:8888"
-          }
-        })
-      }).then(function(doc) {
-        doc._attachments.should.deep.equal({
-          "foo.txt": {
-            "content_type": "text/plain",
-            "stub": true,
-            length: 29
-          }
+          ajax: { qs: { 'atts_since': "[\"" + response.rev + "\"]" },
+                  useQuerystring: true}
         });
+      }).then(function(doc) {
+          doc._attachments.should.deep.equal(binAttDocStub);
       });
+    });
+
+    function attsSince(rev) {
+      return { ajax: { qs: { 'atts_since': "[\"" + rev + "\"]" },
+        useQuerystring: true}};
+    }
+
+    it('checks that atts_since returns attachments based on the right state',
+    function() {
+      //var db = new PouchDB(dbs.name);
+      var db = new PouchDB("http://127.0.0.1:5984/delme");
+
+      var firstRev = {};
+      var secondRev = {};
+      var thirdRev = {};
+      var attachmentId = Object.keys(binAttDoc._attachments)[0];
+
+      return db.get(binAttDoc._id).then(function(response) {
+        return db.remove(response._id, response._rev);
+      }).then(function() {
+        return db.put(binAttDoc);
+      }).then(function(response) {
+          firstRev = response.rev;
+          return db.removeAttachment(binAttDoc._id, attachmentId, firstRev);
+      }).then(function(response) {
+        secondRev = response.rev;
+        var binAttDocClone = utils.clone(binAttDoc);
+        binAttDocClone._rev = secondRev;
+        return db.put(binAttDocClone);
+      }).then(function(response) {
+        thirdRev = response.rev;
+        return db.get(binAttDoc._id, attsSince(firstRev));
+      }).then(function(doc) {
+        // This is counter-intuitive to me but CouchDB at least doesn't
+        // remember the past
+        doc._attachments.should.deep.equal(binAttDoc._attachments);
+        return db.get(binAttDoc._id, attsSince(secondRev));
+      }).then(function(doc) {
+        doc._attachments.should.deep.equal(binAttDoc._attachments);
+        return db.get(binAttDoc._id, attsSince(thirdRev));
+      }).then(function(doc) {
+        doc._attachments.should.deep.equal(binAttDocStub);
+      })
+    });
+
+    it.only("delme", function() {
+      var db1Rev = {};
+      var id = "arg" + (new Date()).getTime();
+
+      // create db1
+      var db1 = new PouchDB(dbs.name);
+      // create db2
+      var db2 = new PouchDB("http://127.0.0.1:8888/db2");
+      // create doc "arg" in db1
+      return db1.put({_id: id, foo: "bar"}).then(function(response) {
+        db1Rev = response.rev;
+        // Synch db1 to db2
+        return db2.replicate.from(db1);
+//        return db1.replicate.to(db2, {create_target: true});
+      }).then(function(response) {
+        // Edit "arg" in db1
+        return db2.put({db1: "change in db1"}, id, db1Rev);
+      }).then(function(response) {
+        db1Rev = response.rev;
+        return db2.get(id);
+      }).then(function(response) {
+        // Edit "arg" in db2
+        response["db2 change"] = "a change on db2";
+        return db2.put(response);
+      }).then(function(response) {
+        // Synch db1 to db2
+        return db1.replicate.to(db2);
+      }).then(function(response) {
+        return db2.get(id);
+      }).then(function(response) {
+        console.log("Final doc is: " + response);
+        return true;
+      }).catch(function(oops) {
+        console.log("oops - " + oops);
+        return false;
+      });
+    });
+
+    it('Test atts_since with conflicts', function() {
+      //var db = new PouchDB(dbs.name);
+      var db = new PouchDB("http://127.0.0.1:5984/delme");
+      //var db = new PouchDB("http://127.0.0.1:8888/delme");
+
+      function attsSincePin(rev) {
+        var queryOptions = attsSince(rev);
+        queryOptions.rev = "1-d4";
+        return queryOptions;
+      }
+
+      var createDoc = function(rev, revisions, nameSelectorArray) {
+        var response = {
+          _id: "foo3",
+          _attachments: {},
+          _rev: rev,
+          _revisions: revisions
+        };
+
+        for (var index in nameSelectorArray) {
+          response._attachments[nameSelectorArray[index].name] = {
+            data: icons[nameSelectorArray[index].selector],
+            content_type: 'img/png'
+          }
+        }
+
+        return response;
+      };
+
+      var fooPng = {name: "foo.png", selector: 0};
+      var barPng = {name: "bar.png", selector: 1};
+      var fakeFooPng = {name: "foo.png", selector: 1};
+      var delmenow = {name: "ick", selector: 1};
+
+      var bulkDocsArgs = [
+        ["1-a1", {start: 1, ids: ['a1']}, [fooPng]],
+        ["2-a2", {start: 2, ids: ['a2', 'a1']}, [barPng]],
+        ["3-a3", {start: 3, ids: ['a3', 'a1']}, [fooPng, barPng]],
+        ["1-b2", {start: 1, ids: ['b2', 'a1']}],
+        ["4-a4", {start: 4, ids: ['a4', 'a1']}, [fakeFooPng]],
+        ["1-c3", {start: 1, ids: ['c3', 'b2', 'a1']}, [fooPng, barPng]],
+        ["1-d4", {start: 1, ids: ['d4', 'c3', 'b2', 'a1']}, [delmenow]]
+      ];
+
+      var bulkDocs = [];
+
+      for(var index in bulkDocsArgs) {
+        var args = bulkDocsArgs[index];
+        bulkDocs.push(createDoc(args[0], args[1], args[2]));
+      }
+
+      bulkDocs[bulkDocsArgs.length - 1]["someFiled"] = "a new value";
+
+
+      //return db.get("foo").then(function(response) {
+      //  return db.remove(response._id, response._rev);
+      //}).then(function() {
+      //  return
+        db.bulkDocs({docs: bulkDocs, new_edits: false})
+      //  ;
+      //})
+        .then(function(response) {
+          return PouchDB.utils.Promise.all(bulkDocsArgs.map(function(args) {
+            return db.get("foo3", attsSincePin(args[0])).then(function(response) {
+              console.log("attsSince Rev = " + args[0] + " - foo is" +
+                (response._attachments["foo.png"].stub ? "" : "not" ) + " a stub, bar is" +
+                (response._attachments["bar.png"].stub ? "" : "not") + " a stub");
+              var foo = response;
+              var ick = args[0];
+              return true;
+            });
+          }));
+      }).catch(function(oops) {
+        return false;
+      })
     });
 
     it('Measures length correctly after put()', function () {
