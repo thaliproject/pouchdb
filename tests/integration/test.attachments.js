@@ -1,6 +1,6 @@
 'use strict';
 
-var utils = require('../../lib/utils');
+//var utils = require('../../lib/utils');
 var adapters = ['local', 'http'];
 var repl_adapters = [
   ['local', 'http'],
