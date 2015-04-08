@@ -35,7 +35,7 @@
     "pouchdb-extend": "^0.1.2",
     "pouchdb-mapreduce": "~2.3.2",
     "pouchdb-upsert": "^1.0.2",
-    "request": "~2.54.0",
+    "request": "~2.28.0",
     "spark-md5": "0.0.5",
     "through2": "^0.4.1",
     "vuvuzela": "^1.0.0"
@@ -92,7 +92,7 @@
     "test-browser": "mkdirp dist && npm run build-js && node ./bin/test-browser.js",
     "cordova": "npm run build && sh bin/run-cordova.sh",
     "jshint": "jshint -c .jshintrc bin/ lib/ tests/",
-    "dev": "npm run version && bash bin/run-test.sh dev",
+    "dev": "npm run version && CLIENT=dev bash bin/run-test.sh",
     "launch-dev-server": "npm run version && node ./bin/dev-server.js",
     "test": "npm run version && npm run jshint && bash bin/run-test.sh",
     "release": "sh bin/release.sh",
