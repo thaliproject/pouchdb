@@ -44,7 +44,7 @@ modules.forEach(function (mod) {
     } else if (modules.indexOf(dep) !== -1) { // core pouchdb-* module
       deps[dep] = topPkg.version;
     } else {
-      throw new Error('Unknown dependency ' + dep);
+      //throw new Error('Unknown dependency ' + dep);
     }
   });
 
