@@ -3,7 +3,7 @@
 var http = require('http');
 var url = require('url');
 
-var PouchDB = require('../../lib');
+var PouchDB = require('../../packages/node_modules/pouchdb-for-coverage');
 var should = require("chai").should();
 
 describe('test.params.js', function () {
@@ -27,28 +27,28 @@ describe('test.params.js', function () {
 
   it('Test default heartbeat', function () {
     var url = 'http://127.0.0.1:' + PORT;
-    return new PouchDB(url).changes().then(function() {
+    return new PouchDB(url).changes().then(function () {
       should.exist(params.heartbeat);
     });
   });
 
   it('Test custom heartbeat', function () {
     var url = 'http://127.0.0.1:' + PORT;
-    return new PouchDB(url).changes({heartbeat: 10}).then(function() {
+    return new PouchDB(url).changes({heartbeat: 10}).then(function () {
       should.equal(params.heartbeat, '10');
     });
   });
 
   it('Test disable heartbeat', function () {
     var url = 'http://127.0.0.1:' + PORT;
-    return new PouchDB(url).changes({heartbeat: false}).then(function() {
+    return new PouchDB(url).changes({heartbeat: false}).then(function () {
       should.not.exist(params.heartbeat);
     });
   });
 
   it('Test disable timeout', function () {
     var url = 'http://127.0.0.1:' + PORT;
-    return new PouchDB(url).changes({timeout: false}).then(function() {
+    return new PouchDB(url).changes({timeout: false}).then(function () {
       should.not.exist(params.timeout);
     });
   });

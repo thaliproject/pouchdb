@@ -4,7 +4,11 @@ title: Adapters
 sidebar: nav.html
 ---
 
-PouchDB is not a self-contained database; it is a CouchDB-style abstraction layer over other databases. By default, PouchDB ships with [IndexedDB][] and [WebSQL][] adapters in the browser, and a [LevelDB][] adapter in Node.js.
+PouchDB is not a self-contained database; it is a CouchDB-style abstraction layer over other databases. By default, PouchDB ships with [IndexedDB][] and [WebSQL][] adapters in the browser, and a [LevelDB][] adapter in Node.js. This can be visualized as so:
+
+<object data="static/svg/pouchdb_adapters.svg" type="image/svg+xml">
+    <img src="static/img/pouchdb_adapters.png" alt="adapters">
+</object>
 
 PouchDB attempts to provide a consistent API that "just works" across every browser and JavaScript environment, and in most cases, you can just use the defaults. However, if you're trying to reach the widest possible audience, or if you want the best performance, then you will sometimes want to tinker with the adapter settings.
 
@@ -120,35 +124,32 @@ var pouch = new PouchDB('myDB');
 console.log(pouch.adapter); // prints either 'idb' or 'websql'
 ```
 
-
 ### SQLite plugin for Cordova/PhoneGap
 
-On Cordova/PhoneGap, the native SQLite database is often a popular choice, because it allows unlimited storage (compared to [IndexedDB/WebSQL storage limits](http://www.html5rocks.com/en/tutorials/offline/quota-research)). It also offers more flexibility in backing up and pre-loading databases, because the SQLite files are directly accessible to app developers.
+On Cordova/PhoneGap/Ionic, the native SQLite database is often a popular choice, because it allows unlimited storage (compared to [IndexedDB/WebSQL storage limits](http://www.html5rocks.com/en/tutorials/offline/quota-research)). It also offers more flexibility in backing up and pre-loading databases, because the SQLite files are directly accessible to app developers.
 
-Luckily, there is a [SQLite Plugin][] (also known as SQLite Storage) that accomplishes exactly this.  If you include this plugin in your project, then PouchDB will automatically pick it up based on the `window.sqlitePlugin` object.
+There are various Cordova plugins that can provide access to native SQLite, such as 
+[Cordova-sqlite-storage](https://github.com/litehelpers/Cordova-sqlite-storage),    
+[cordova-plugin-sqlite-2](https://github.com/nolanlawson/cordova-plugin-sqlite-2), or 
+[cordova-plugin-websql](https://github.com/Microsoft/cordova-plugin-websql).
 
-However, this only occurs if the adapter is `'websql'`, not `'idb'` (e.g. on Android 4.4+).  To force PouchDB to use the WebSQL adapter, you can do:
+To use them, you must install them separately into your Cordova application, and then add a special third-party PouchDB adapter
+called [pouchdb-adapter-cordova-sqlite](https://github.com/nolanlawson/pouchdb-adapter-cordova-sqlite). Once you do
+that, you can use it via:
 
 ```js
-var db = new PouchDB('myDB', {adapter: 'websql'});
+var db = new PouchDB('myDB.db', {adapter: 'cordova-sqlite'});
 ```
 
-If you are unsure whether PouchDB is using the SQLite Plugin or not, just run:
+{% include alert/start.html variant="info"%}
+In PouchDB pre-6.0.0, Cordova SQLite support was available out-of-the-box, but it has been moved to a separate plugin
+to reduce confusion and to make it explicit whether you are using WebSQL or Cordova SQLite.
+{% include alert/end.html%}
 
-```js
-db.info().then(console.log.bind(console));
-```
+We recommend avoiding Cordova SQLite unless you are hitting the 50MB storage limit in iOS, you 
+require native or preloaded access to the database files, or there's some other reason to go native.
+The built-in IndexedDB and WebSQL adapters are nearly always more performant and stable.
 
-This will print some database information, including the attribute `sqlite_plugin`, which will be `true` if the SQLite Plugin is being used.
-
-{% include alert/start.html variant="warning"%}
-{% markdown %}
-
-The SQLite Plugin does not currently pass the PouchDB test suite. It also tends to be slower than direct IndexedDB/WebSQL.
-
-We recommend avoiding the SQLite Plugin, unless you are hitting the 50MB storage limit in iOS or you require native or preloaded access to the database files.
-
-{% endmarkdown %}
 {% include alert/end.html%}
 
 ### Browser adapter plugins
@@ -163,7 +164,7 @@ PouchDB also offers separate browser plugins that use backends other than Indexe
 
 {% include alert/start.html variant="warning"%}
 {% markdown %}
-These plugins add a hefty footprint due to external dependencies, so take them with a grain of salt. You may want to [use the Browserify/Webpack versions](/api.html#extras) to deduplicate code and create a smaller bundle.
+These plugins add a hefty footprint due to external dependencies, so take them with a grain of salt.
 {% endmarkdown %}
 {% include alert/end.html%}
 
@@ -230,64 +231,49 @@ var pouch = new PouchDB('./path/to/db');
 ```
 
 then a LevelDB-based database will be created in the directory `./path/to/db`.
-
-Plus, since the LevelDB adapter is based on [LevelDOWN][], you also benefit from the rich ecosystem of LevelDOWN-based adapters. They may be installed using plain old `npm install` and `require()`. Below are a few examples.
+The LevelDB implementation uses [LevelDOWN][].
 
 #### In-memory
 
-Just as in the browser, you can create a pure in-memory pouch based on [MemDOWN][]:
+Just as in the browser, you can also create a pure in-memory PouchDB:
 
 ```
-$ npm install memdown
-```
-
-then:
-
-```js
-var pouch = new PouchDB('myDB', {db: require('memdown')});
-```
-
-Notice that in Node.js, we use the key `'db'` instead of `'adapter'`.  In Node.js the adapter is always called `'leveldb'` for historical reasons.
-
-#### Riak-based adapter
-
-This pouch is backed by [RiakDOWN][]:
-
-```
-$ npm install riakdown
+$ npm install pouchdb-adapter-memory
 ```
 
 then:
 
 ```js
-var pouch = new PouchDB('riak://localhost:8087/somebucket', {db: require('riakdown')});
+PouchDB.plugin(require('pouchdb-adapter-memory'));
+var pouch = new PouchDB('myDB', {adapter: 'memory'});
 ```
 
-#### More LevelDOWN adapters
+This implementation is based on [MemDOWN](https://github.com/level/memdown), and will not write any changes to disk.
 
-There are many other LevelDOWN-based plugins &ndash; far too many to list here. You can find a [mostly-complete list on Github](https://github.com/rvagg/node-levelup/wiki/Modules#storage-back-ends) that includes implementations on top of MySQL, Windows Azure Table Storage, and SQLite.
+#### Node SQLite adapter
 
-#### node-websql adapter
-
-In addition to the LevelDOWN-based adapters, you can also use PouchDB over
-[SQLite3](https://github.com/mapbox/node-sqlite3) in Node, using the WebSQL adapter and
+You can also use PouchDB over [SQLite3](https://github.com/mapbox/node-sqlite3) in Node, using the WebSQL adapter and
 [node-websql](https://github.com/nolanlawson/node-websql):
 
 ```js
 var PouchDB = require('pouchdb');
-require('pouchdb/extras/websql');
+PouchDB.plugin(require('pouchdb-adapter-node-websql'));
 
 var db = new PouchDB('mydatabase.db', {adapter: 'websql'});
 ```
 
-This should be more efficient than something like [sqldown](https://github.com/calvinmetcalf/SQLdown), because
-instead of using a LevelDB-esque adapter over SQLite, PouchDB is directly using
-SQLite queries to build the database.
+In this case, PouchDB is directly using SQLite queries to build the database, exactly as the WebSQL adapter would.
 
+See ["Prebuilt databases with PouchDB"](https://pouchdb.com/2016/04/28/prebuilt-databases-with-pouchdb.html)
+for a guide to how you might use this adapter to create prebuilt SQLite database files for adapters such as Cordova or Electron.
 
-{% include alert/start.html variant="warning"%}
-We do not currently test against any LevelDOWN adapters other than LevelDB and MemDOWN, so the other backends should be considered experimental.
-{% include alert/end.html%}
+#### Other LevelDOWN adapters
+
+Technically you are free to use
+[any LevelDOWN-based implementation](https://github.com/rvagg/node-levelup/wiki/Modules#storage-back-ends) in either Node or the browser.
+However this should be considered **extremely experimental** and not designed for production use.
+
+See [pouchdb-adapter-leveldb-core](https://www.npmjs.com/package/pouchdb-adapter-leveldb-core) for details.
 
 {% include anchor.html title="PouchDB over HTTP" hash="pouchdb_over_http"%}
 
@@ -303,8 +289,7 @@ You can also sync to and from these databases to your local PouchDB.
 Currently PouchDB has full support for:
 
 * CouchDB 1.x ([tested in CI](https://travis-ci.org/pouchdb/pouchdb))
-* [IrisCouch](http://www.iriscouch.com/) (same as 1.x)
-* [Couchappy](https://www.couchappy.com/) (same as 1.x)
+* [Smileupps](https://www.smileupps.com/) (same as 1.x)
 * CouchDB 2.x ([tested in CI](https://travis-ci.org/pouchdb/pouchdb))
 * [Cloudant](https://cloudant.com/) (roughly the same as 2.x)
 * [PouchDB Server](https://github.com/pouchdb/pouchdb-server) ([tested in CI](https://travis-ci.org/pouchdb/pouchdb))
@@ -338,8 +323,6 @@ The best place to look for information on which browsers support which databases
 [LocalStorage]: https://developer.mozilla.org/en-US/docs/Web/Guide/API/DOM/Storage
 [es5-shims]: https://github.com/es-shims/es5-shim
 [sqlite plugin]: https://github.com/brodysoft/Cordova-SQLitePlugin
+[sqlite plugin 2]: https://github.com/nolanlawson/cordova-plugin-sqlite-2
 [leveldown]: https://github.com/rvagg/node-leveldown
 [level-js]: https://github.com/maxogden/level.js
-[memdown]: https://github.com/rvagg/memdown
-[localstorage-down]: https://github.com/No9/localstorage-down
-[RiakDOWN]: https://github.com/nlf/riakdown

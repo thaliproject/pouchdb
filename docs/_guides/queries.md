@@ -33,7 +33,7 @@ db.query(function (doc, emit) {
 });
 ```
 
-In the above example, the `result` object will contain all documents where the `name` attribute is equal to `'foo'`.
+In the above example, the `result` object will contain stubs of documents where the `name` attribute is equal to `'foo'`. To include the document in each row of results, use the `include_docs` option.
 
 {% include alert/start.html variant="info" %}
 
@@ -70,6 +70,13 @@ pouch.put(ddoc).then(function () {
 
 The <code>.toString()</code> at the end of the map function is necessary to prep the
 object for becoming valid JSON.
+
+{% include alert/end.html %}
+
+{% include alert/start.html variant="info" %}
+
+The <code>emit</code> function will be available in scope when the map function is
+run, so don't pass it in as a parameter.
 
 {% include alert/end.html %}
 

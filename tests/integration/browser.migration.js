@@ -3,23 +3,71 @@
    PouchDBVersion360 */
 'use strict';
 
-var scenarios = [
-  'PouchDB v1.1.0',
-  'PouchDB v2.0.0',
-  'PouchDB v2.2.0',
-  'PouchDB v3.0.6',
-  'PouchDB v3.2.0',
-  'PouchDB v3.6.0',
-  'websql'
-];
-
 describe('migration', function () {
 
   function usingDefaultPreferredAdapters() {
-    var defaults = ['idb', 'websql'];
-    return !(PouchDB.preferredAdapters < defaults ||
-      PouchDB.preferredAdapters > defaults);
+    var pref = PouchDB.preferredAdapters;
+    // Firefox will have ['idb'], Chrome will have ['idb', 'websql']
+    return (pref.length === 1 && pref[0] === 'idb') ||
+      (pref.length === 2 && pref[0] === 'idb' && pref[1] === 'websql');
   }
+
+  var scenarios = [
+    'PouchDB v1.1.0',
+    'PouchDB v2.0.0',
+    'PouchDB v2.2.0',
+    'PouchDB v3.0.6',
+    'PouchDB v3.2.0',
+    'PouchDB v3.6.0',
+    'websql'
+  ];
+
+  var skip = false;
+
+  before(function () {
+    var isNodeWebkit = typeof window !== 'undefined' &&
+      typeof process !== 'undefined';
+
+    var skipMigration = 'SKIP_MIGRATION' in testUtils.params() &&
+      testUtils.params().SKIP_MIGRATION;
+
+    if (!usingDefaultPreferredAdapters() || window.msIndexedDB ||
+      isNodeWebkit || skipMigration) {
+      skip = true;
+    }
+
+    if (skip) {
+      return;
+    }
+    // conditionally load all legacy PouchDB scripts to avoid pulling them in
+    // for test runs that don't test migrations
+    return Promise.all(scenarios.map(function (scenario) {
+      var match = scenario.match(/PouchDB v([\.\d]+)/);
+      if (!match) {
+        return testUtils.Promise.resolve();
+      }
+      return new testUtils.Promise(function (resolve, reject) {
+        var script = document.createElement('script');
+        script.onload = resolve;
+        script.onerror = reject;
+        script.src = 'deps/pouchdb-' + match[1] + '-postfixed.js';
+        document.body.appendChild(script);
+      });
+    }));
+  });
+
+  after(function () {
+    if (skip) {
+      return;
+    }
+    // free memory
+    delete window.PouchDBVersion110;
+    delete window.PouchDBVersion200;
+    delete window.PouchDBVersion220;
+    delete window.PouchDBVersion306;
+    delete window.PouchDBVersion320;
+    delete window.PouchDBVersion360;
+  });
 
   scenarios.forEach(function (scenario) {
 
@@ -27,7 +75,6 @@ describe('migration', function () {
 
       var dbs = {};
       var constructors = {};
-      var skip = false;
 
       var post220 = [
             'PouchDB v2.2.0',
@@ -49,18 +96,8 @@ describe('migration', function () {
           ].indexOf(scenario) !== -1;
 
       beforeEach(function (done) {
-
-        var isNodeWebkit = typeof window !== 'undefined' &&
-          typeof process !== 'undefined';
-
-        var skipMigration = 'SKIP_MIGRATION' in testUtils.params() &&
-          testUtils.params().SKIP_MIGRATION;
-
-        if (!usingDefaultPreferredAdapters() || window.msIndexedDB ||
-            isNodeWebkit || skipMigration) {
-          skip = true;
-          done();
-          return;
+        if (skip) {
+          return done();
         }
 
         constructors = {
@@ -102,8 +139,7 @@ describe('migration', function () {
 
       afterEach(function (done) {
         if (skip) {
-          done();
-          return;
+          return done();
         }
         testUtils.cleanup([dbs.first.local, dbs.second.local], done);
       });
@@ -131,20 +167,18 @@ describe('migration', function () {
             oldPouch.close(function (err) {
               should.not.exist(err, 'got error: ' + JSON.stringify(err));
               var newPouch = new dbs.second.pouch(dbs.second.local);
-              newPouch.then(function (newPouch) {
-                return newPouch.allDocs({key: '2'});
+              return newPouch.allDocs({key: '2'}).then(function (res) {
+                res.total_rows.should.equal(3);
+                res.rows.should.have.length(1);
+                return newPouch.allDocs({key: '0'});
               }).then(function (res) {
-                  res.total_rows.should.equal(3);
-                  res.rows.should.have.length(1);
-                  return newPouch.allDocs({key: '0'});
-                }).then(function (res) {
-                  res.total_rows.should.equal(3);
-                  res.rows.should.have.length(0);
-                  done();
-                }).catch(function (err) {
-                  should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                  done();
-                });
+                res.total_rows.should.equal(3);
+                res.rows.should.have.length(0);
+                done();
+              }).catch(function (err) {
+                should.not.exist(err, 'got error: ' + JSON.stringify(err));
+                done();
+              });
             });
           });
         });
@@ -160,57 +194,46 @@ describe('migration', function () {
           {_id: "4", integer: 4, string: '4', _deleted : true}
         ];
 
-        new dbs.first.pouch(dbs.first.remote, function (err, oldPouch) {
-          should.not.exist(err, 'got error in constructor: ' +
-            JSON.stringify(err));
-          if (err) {
-            done();
-          }
-          oldPouch.bulkDocs({docs: docs}, {}, function (err) {
-            should.not.exist(err, 'got error in bulkDocs: ' +
-              JSON.stringify(err));
-            new dbs.first.pouch(dbs.first.local, dbs.first.localOpts,
-              function (err, oldLocalPouch) {
-              oldPouch.replicate.to(oldLocalPouch, function (err, result) {
-                should.not.exist(err, 'got error in replicate: ' +
-                  JSON.stringify(err));
+        var oldPouch = new dbs.first.pouch(dbs.first.remote);
+        oldPouch.bulkDocs({docs: docs}, {}, function (err) {
+          should.not.exist(err, 'got error in bulkDocs: ' +
+                           JSON.stringify(err));
+          var oldLocalPouch =  new dbs.first.pouch(dbs.first.local,
+                                                   dbs.first.localOpts);
+          oldPouch.replicate.to(oldLocalPouch, function (err, result) {
+            should.not.exist(err, 'got error in replicate: ' +
+                             JSON.stringify(err));
+            if (err) {
+              done();
+            }
+            should.exist(result.ok, 'replication was ok');
+            oldPouch.close(function (err) {
+              should.not.exist(err, 'got error in close: ' +
+                               JSON.stringify(err));
+              if (err) {
+                done();
+              }
+              should.not.exist(err, 'got error: ' + JSON.stringify(err));
+              if (err) {
+                done();
+              }
+              oldLocalPouch.close(function (err) {
+                should.not.exist(err, 'got error in close: ' +
+                                 JSON.stringify(err));
                 if (err) {
                   done();
                 }
-                should.exist(result.ok, 'replication was ok');
-                oldPouch.close(function (err) {
-                  should.not.exist(err, 'got error in close: ' +
-                    JSON.stringify(err));
-                  if (err) {
-                    done();
-                  }
-                  should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                  if (err) {
-                    done();
-                  }
-                  oldLocalPouch.close(function (err) {
-                    should.not.exist(err, 'got error in close: ' +
-                      JSON.stringify(err));
-                    if (err) {
-                      done();
-                    }
-                    new dbs.second.pouch(dbs.second.local,
-                      function (err, newPouch) {
-                      should.not.exist(err, 'got error in 2nd constructor: ' +
-                        JSON.stringify(err));
-                      if (err) {
-                        done();
-                      }
-                      newPouch.allDocs({}, function (err, res) {
-                        should.not.exist(err, 'got error in allDocs: ' +
-                          JSON.stringify(err));
-                        res.rows.should.have.length(3, 'unexpected rows: ' +
-                          JSON.stringify(res.rows));
-                        res.total_rows.should.equal(3);
-                        done();
-                      });
-                    });
-                  });
+                var newPouch = new dbs.second.pouch(dbs.second.local);
+                if (err) {
+                  done();
+                }
+                newPouch.allDocs({}, function (err, res) {
+                  should.not.exist(err, 'got error in allDocs: ' +
+                                   JSON.stringify(err));
+                  res.rows.should.have.length(3, 'unexpected rows: ' +
+                                              JSON.stringify(res.rows));
+                  res.total_rows.should.equal(3);
+                  done();
                 });
               });
             });
@@ -228,56 +251,42 @@ describe('migration', function () {
           {_id: "4", integer: 4, string: '4', _deleted : true}
         ];
 
-        new dbs.first.pouch(dbs.first.remote, function (err, oldPouch) {
-          should.not.exist(err, 'got error in constructor: ' +
-            JSON.stringify(err));
-          if (err) {
-            done();
-          }
-          oldPouch.bulkDocs({docs: docs}, {}, function (err) {
-            should.not.exist(err, 'got error in bulkDocs: ' +
-              JSON.stringify(err));
-            new dbs.first.pouch(dbs.first.local, dbs.first.localOpts,
-            function (err, oldLocalPouch) {
-              oldPouch.replicate.to(oldLocalPouch, function (err, result) {
-                should.not.exist(err, 'got error in replicate: ' +
-                  JSON.stringify(err));
+        var oldPouch = new dbs.first.pouch(dbs.first.remote);
+        oldPouch.bulkDocs({docs: docs}, {}, function (err) {
+          should.not.exist(err, 'got error in bulkDocs: ' +
+                           JSON.stringify(err));
+          var oldLocalPouch = new dbs.first.pouch(dbs.first.local,
+                                                  dbs.first.localOpts);
+          oldPouch.replicate.to(oldLocalPouch, function (err, result) {
+            should.not.exist(err, 'got error in replicate: ' +
+                             JSON.stringify(err));
+            if (err) {
+              done();
+            }
+            should.exist(result.ok, 'replication was ok');
+            oldPouch.close(function (err) {
+              should.not.exist(err, 'got error in close: ' +
+                               JSON.stringify(err));
+              if (err) {
+                done();
+              }
+              should.not.exist(err, 'got error: ' + JSON.stringify(err));
+              if (err) {
+                done();
+              }
+              oldLocalPouch.close(function (err) {
+                should.not.exist(err, 'got error in close: ' +
+                                 JSON.stringify(err));
                 if (err) {
                   done();
                 }
-                should.exist(result.ok, 'replication was ok');
-                oldPouch.close(function (err) {
-                  should.not.exist(err, 'got error in close: ' +
-                    JSON.stringify(err));
-                  if (err) {
+                var newPouch = new dbs.second.pouch(dbs.second.local);
+                newPouch.changes({include_docs: true})
+                  .on('complete', function (complete) {
+                    complete.results.should.have
+                      .length(5, 'no _local docs in changes()');
                     done();
-                  }
-                  should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                  if (err) {
-                    done();
-                  }
-                  oldLocalPouch.close(function (err) {
-                    should.not.exist(err, 'got error in close: ' +
-                      JSON.stringify(err));
-                    if (err) {
-                      done();
-                    }
-                    new dbs.second.pouch(dbs.second.local,
-                      function (err, newPouch) {
-                        should.not.exist(err, 'got error in 2nd constructor: ' +
-                          JSON.stringify(err));
-                        if (err) {
-                          done();
-                        }
-                        newPouch.changes({include_docs: true})
-                        .on('complete', function (complete) {
-                          complete.results.should.have.length(5,
-                            'no _local docs in changes()');
-                          done();
-                        }).on('error', done);
-                      });
-                  });
-                });
+                  }).on('error', done);
               });
             });
           });
@@ -287,14 +296,7 @@ describe('migration', function () {
       if (post220) {
         it("Test persistent views don't require update", function (done) {
           if (skip) { return done(); }
-          var oldPouch =
-            new dbs.first.pouch(dbs.first.local, dbs.first.localOpts,
-              function (err) {
-                should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                if (err) {
-                  done();
-                }
-              });
+          var oldPouch = new dbs.first.pouch(dbs.first.local, dbs.first.localOpts);
           var docs = origDocs.slice().concat([{
             _id: '_design/myview',
             views: {
@@ -319,9 +321,7 @@ describe('migration', function () {
               oldPouch.close(function (err) {
                 should.not.exist(err, 'close');
                 var newPouch = new dbs.second.pouch(dbs.second.local);
-                newPouch.then(function (newPouch) {
-                  return newPouch.query('myview', {stale: 'ok'});
-                }).then(function (res) {
+                newPouch.query('myview', {stale: 'ok'}).then(function (res) {
                   res.rows.should.deep.equal(expectedRows);
                   done();
                 }).catch(function (err) {
@@ -336,14 +336,7 @@ describe('migration', function () {
         it("Test persistent views don't require update, with a value",
             function (done) {
           if (skip) { return done(); }
-          var oldPouch =
-            new dbs.first.pouch(dbs.first.local, dbs.first.localOpts,
-              function (err) {
-                should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                if (err) {
-                  done();
-                }
-              });
+          var oldPouch = new dbs.first.pouch(dbs.first.local, dbs.first.localOpts);
           var docs = origDocs.slice().concat([{
             _id: '_design/myview',
             views: {
@@ -368,9 +361,7 @@ describe('migration', function () {
               oldPouch.close(function (err) {
                 should.not.exist(err, 'close');
                 var newPouch = new dbs.second.pouch(dbs.second.local);
-                newPouch.then(function (newPouch) {
-                  return newPouch.query('myview', {stale: 'ok'});
-                }).then(function (res) {
+                newPouch.query('myview', {stale: 'ok'}).then(function (res) {
                   res.rows.should.deep.equal(expectedRows);
                   done();
                 }).catch(function (err) {
@@ -466,22 +457,13 @@ describe('migration', function () {
             {_id: '\u0000foo\u0000'}
           ];
 
-          var oldPouch =
-            new dbs.first.pouch(dbs.first.local, dbs.first.localOpts,
-              function (err) {
-                should.not.exist(err, 'got error: ' + JSON.stringify(err));
-                if (err) {
-                  done();
-                }
-              });
+          var oldPouch = new dbs.first.pouch(dbs.first.local, dbs.first.localOpts);
           oldPouch.bulkDocs({docs: origDocs}, function (err) {
             should.not.exist(err, 'got error: ' + JSON.stringify(err));
             oldPouch.close(function (err) {
               should.not.exist(err, 'got error: ' + JSON.stringify(err));
               var newPouch = new dbs.second.pouch(dbs.second.local);
-              newPouch.then(function (newPouch) {
-                return newPouch.allDocs();
-              }).then(function (res) {
+              newPouch.allDocs().then(function (res) {
                 res.total_rows.should.equal(2);
                 res.rows.should.have.length(2);
                 res.rows[1].id.should.equal(origDocs[0]._id);
@@ -779,7 +761,7 @@ describe('migration', function () {
               _id: 'doc' + i,
               _attachments: {
                 'att.txt' : {
-                  data: PouchDB.utils.btoa(Math.random().toString()),
+                  data: testUtils.btoa(Math.random().toString()),
                   content_type: 'text/plain'
                 }
               }
@@ -945,7 +927,7 @@ describe('migration', function () {
 
           var oldPouch = new dbs.first.pouch(
             dbs.first.local, dbs.first.localOpts);
-          var chain = PouchDB.utils.Promise.resolve();
+          var chain = testUtils.Promise.resolve();
           tree.forEach(function (docs) {
             chain = chain.then(function () {
               return oldPouch.bulkDocs(docs, {new_edits: false});

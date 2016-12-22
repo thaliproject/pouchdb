@@ -134,19 +134,23 @@ adapters.forEach(function (adapters) {
             var conflictsEqual = JSON.stringify(localDoc._conflicts || []) ===
               JSON.stringify(remoteDoc._conflicts || []);
             if (!revsEqual || !conflictsEqual) {
-              return waitForUptodate();
+              // we can get caught in an infinite loop here when using adapters based
+              // on microtasks, e.g. memdown, so use setTimeout() to get a macrotask
+              return new testUtils.Promise(function (resolve) {
+                setTimeout(resolve, 0);
+              }).then(waitForUptodate);
             }
           });
         });
       }
 
       function waitForConflictsResolved() {
-        return new PouchDB.utils.Promise(function (resolve) {
+        return new testUtils.Promise(function (resolve) {
           var changes = remote.changes({
             live: true,
             include_docs: true,
             conflicts: true
-          }).on('change', function(change) {
+          }).on('change', function (change) {
             if (!('_conflicts' in change.doc)) {
               changes.cancel();
             }
@@ -156,7 +160,7 @@ adapters.forEach(function (adapters) {
       }
 
       function cleanup() {
-        return new PouchDB.utils.Promise(function (resolve, reject) {
+        return new testUtils.Promise(function (resolve, reject) {
           sync.on('complete', resolve);
           sync.on('error', reject);
           sync.cancel();
@@ -214,12 +218,12 @@ adapters.forEach(function (adapters) {
       var repl2 = local.replicate.from(remote, { live: true });
 
       function waitForConflictsResolved() {
-        return new PouchDB.utils.Promise(function (resolve) {
+        return new testUtils.Promise(function (resolve) {
           var changes = remote.changes({
             live: true,
             include_docs: true,
             conflicts: true
-          }).on('change', function(change) {
+          }).on('change', function (change) {
             if (!('_conflicts' in change.doc)) {
               changes.cancel();
             }
@@ -252,14 +256,18 @@ adapters.forEach(function (adapters) {
             var conflictsEqual = JSON.stringify(localDoc._conflicts || []) ===
               JSON.stringify(remoteDoc._conflicts || []);
             if (!revsEqual || !conflictsEqual) {
-              return waitForUptodate();
+              // we can get caught in an infinite loop here when using adapters based
+              // on microtasks, e.g. memdown, so use setTimeout() to get a macrotask
+              return new testUtils.Promise(function (resolve) {
+                setTimeout(resolve, 0);
+              }).then(waitForUptodate);
             }
           });
         });
       }
 
       function cleanup() {
-        return new PouchDB.utils.Promise(function (resolve, reject) {
+        return new testUtils.Promise(function (resolve, reject) {
           var numDone = 0;
 
           function checkDone() {
@@ -302,7 +310,7 @@ adapters.forEach(function (adapters) {
         return local.get('1', {conflicts: true}).then(function (doc) {
           return local.remove(doc._id, doc._conflicts[0]);
         });
-      }).then(function() {
+      }).then(function () {
         return waitForConflictsResolved();
       }).then(function () {
         return local.get('1', {conflicts: true, revs: true});

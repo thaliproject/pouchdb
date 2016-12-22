@@ -16,7 +16,8 @@ var testTimeout = 30 * 60 * 1000;
 var username = process.env.SAUCE_USERNAME;
 var accessKey = process.env.SAUCE_ACCESS_KEY;
 
-var SELENIUM_VERSION = process.env.SELENIUM_VERSION || '2.45.0';
+var SELENIUM_VERSION = process.env.SELENIUM_VERSION || '2.53.1';
+var FIREFOX_BIN = process.env.FIREFOX_BIN;
 
 // BAIL=0 to disable bailing
 var bail = process.env.BAIL !== '0';
@@ -75,6 +76,9 @@ if (process.env.POUCHDB_SRC) {
 }
 if (process.env.COUCH_HOST) {
   qs.couchHost = process.env.COUCH_HOST;
+}
+if (process.env.NEXT) {
+  qs.NEXT = '1';
 }
 
 testUrl += '?';
@@ -137,12 +141,12 @@ function testComplete(result) {
 function startSelenium(callback) {
   // Start selenium
   var opts = {version: SELENIUM_VERSION};
-  selenium.install(opts, function(err) {
+  selenium.install(opts, function (err) {
     if (err) {
       console.error('Failed to install selenium');
       process.exit(1);
     }
-    selenium.start(opts, function() {
+    selenium.start(opts, function () {
       sauceClient = wd.promiseChainRemote();
       callback();
     });
@@ -184,6 +188,9 @@ function startTest() {
     'idle-timeout': 599,
     'tunnel-identifier': tunnelId
   };
+  if (FIREFOX_BIN) {
+    opts.firefox_binary = FIREFOX_BIN;
+  }
 
   sauceClient.init(opts).get(testUrl, function () {
 

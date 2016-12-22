@@ -7,7 +7,7 @@ db.changes(options)
 A list of changes made to documents in the database, in the order they were made.
 It returns an object with the method `cancel()`, which you call if you don't want to listen to new changes anymore.
 
-It is an [event emitter][event emitter] and will emit a `'change'` event on each document change, a `'complete'` event when all the changes have been processed, and an `'error'` event when an error occurs.
+It is an [event emitter][event emitter] and will emit a `'change'` event on each document change, a `'complete'` event when all the changes have been processed, and an `'error'` event when an error occurs. Calling `cancel()` will unsubscribe all event listeners automatically.
 
 ### Options
 
@@ -75,7 +75,7 @@ changes.cancel(); // whenever you want to cancel
 
 * __`change`__ (`info`) - This event fires when a change has been found. `info` will contain details about the change, such as whether it was deleted and what the new `_rev` is. `info.doc` will contain the doc if you set `include_docs` to `true`. See below for an example response.
 * __`complete`__ (`info`) - This event fires when all changes have been read. In live changes, only cancelling the changes should trigger this event. `info.results` will contain the list of changes. See below for an example.
-* __`error`__ (`err`) - This event is fired when the replication is stopped due to an unrecoverable failure.
+* __`error`__ (`err`) - This event is fired when the changes feed is stopped due to an unrecoverable failure.
 
 #### Example response
 
@@ -210,7 +210,8 @@ db.changes({
     "changes": [{
       "rev": "1-A8BC08745E62E58830CA066D99E5F457"
     }]
-  }]
+  }],
+  "last_seq": 4
 }
 {% endhighlight %}
 

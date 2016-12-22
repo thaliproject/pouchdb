@@ -30,14 +30,14 @@ adapters.forEach(function (adapter) {
         db.get(info.id, function (err, doc) {
           doc.should.have.property('test');
           db.get(info.id + 'asdf', function (err) {
-            err.status.should.equal(PouchDB.Errors.MISSING_DOC.status,
+            err.status.should.equal(testUtils.errors.MISSING_DOC.status,
                                     'correct error status returned');
-            err.name.should.equal(PouchDB.Errors.MISSING_DOC.name,
+            err.name.should.equal(testUtils.errors.MISSING_DOC.name,
                                   'correct error name returned');
-            err.message.should.equal(PouchDB.Errors.MISSING_DOC.message,
+            err.message.should.equal(testUtils.errors.MISSING_DOC.message,
                                     'correct error message returned');
             // todo: does not work in pouchdb-server.
-            // err.reason.should.equal(PouchDB.Errors.MISSING_DOC.reason,
+            // err.reason.should.equal(testUtils.errors.MISSING_DOC.reason,
             //                           'correct error reason returned');
             done();
           });
@@ -53,14 +53,14 @@ adapters.forEach(function (adapter) {
       }, function (err, info) {
         db.get(info.id, function () {
           db.get(info.id + 'asdf', function (err) {
-            err.status.should.equal(PouchDB.Errors.MISSING_DOC.status,
+            err.status.should.equal(testUtils.errors.MISSING_DOC.status,
                                     'correct error status returned');
-            err.name.should.equal(PouchDB.Errors.MISSING_DOC.name,
+            err.name.should.equal(testUtils.errors.MISSING_DOC.name,
                                   'correct error name returned');
-            err.message.should.equal(PouchDB.Errors.MISSING_DOC.message,
+            err.message.should.equal(testUtils.errors.MISSING_DOC.message,
                                     'correct error message returned');
             // todo: does not work in pouchdb-server.
-            // err.reason.should.equal(PouchDB.Errors.MISSING_DOC.reason,
+            // err.reason.should.equal(testUtils.errors.MISSING_DOC.reason,
             //                           'correct error reason returned');
             done();
           });
@@ -76,15 +76,10 @@ adapters.forEach(function (adapter) {
           _rev: info.rev
         }, function () {
           db.get(info.id, function (err) {
-            err.status.should.equal(PouchDB.Errors.MISSING_DOC.status,
+            err.status.should.equal(testUtils.errors.MISSING_DOC.status,
                                       'correct error status returned');
-            err.name.should.equal(PouchDB.Errors.MISSING_DOC.name,
+            err.name.should.equal(testUtils.errors.MISSING_DOC.name,
                                       'correct error name returned');
-            err.message.should.equal(PouchDB.Errors.MISSING_DOC.message,
-                                      'correct error message returned');
-            // todo: does not work in pouchdb-server.
-            // err.reason.should.equal(PouchDB.Errors.MISSING_DOC.reason,
-            //                          'correct error reason returned');
             done();
           });
         });
@@ -109,68 +104,67 @@ adapters.forEach(function (adapter) {
     });
 
     it('Testing get with rev', function (done) {
-      new PouchDB(dbs.name, function (err, db) {
-        testUtils.writeDocs(db, JSON.parse(JSON.stringify(origDocs)),
-          function () {
-          db.get('3', function (err, parent) {
-            // add conflicts
-            var pRevId = parent._rev.split('-')[1];
-            var conflicts = [
-              {
-                _id: '3',
-                _rev: '2-aaa',
-                value: 'x',
-                _revisions: {
-                  start: 2,
-                  ids: [
-                    'aaa',
-                    pRevId
-                  ]
-                }
-              },
-              {
-                _id: '3',
-                _rev: '3-bbb',
-                value: 'y',
-                _deleted: true,
-                _revisions: {
-                  start: 3,
-                  ids: [
-                    'bbb',
-                    'some',
-                    pRevId
-                  ]
-                }
-              },
-              {
-                _id: '3',
-                _rev: '4-ccc',
-                value: 'z',
-                _revisions: {
-                  start: 4,
-                  ids: [
-                    'ccc',
-                    'even',
-                    'more',
-                    pRevId
-                  ]
-                }
+      var db = new PouchDB(dbs.name);
+      var docs = JSON.parse(JSON.stringify(origDocs));
+      testUtils.writeDocs(db, docs, function () {
+        db.get('3', function (err, parent) {
+          // add conflicts
+          var pRevId = parent._rev.split('-')[1];
+          var conflicts = [
+            {
+              _id: '3',
+              _rev: '2-aaa',
+              value: 'x',
+              _revisions: {
+                start: 2,
+                ids: [
+                  'aaa',
+                  pRevId
+                ]
               }
-            ];
-            db.put(conflicts[0], { new_edits: false }, function () {
-              db.put(conflicts[1], { new_edits: false }, function () {
-                db.put(conflicts[2], { new_edits: false }, function () {
-                  db.get('3', { rev: '2-aaa' }, function (err, doc) {
-                    doc._rev.should.equal('2-aaa');
-                    doc.value.should.equal('x');
-                    db.get('3', { rev: '3-bbb' }, function (err, doc) {
-                      doc._rev.should.equal('3-bbb');
-                      doc.value.should.equal('y');
-                      db.get('3', { rev: '4-ccc' }, function (err, doc) {
-                        doc._rev.should.equal('4-ccc');
-                        doc.value.should.equal('z');
-                        done();
-                      });
+            },
+            {
+              _id: '3',
+              _rev: '3-bbb',
+              value: 'y',
+              _deleted: true,
+              _revisions: {
+                start: 3,
+                ids: [
+                  'bbb',
+                  'some',
+                  pRevId
+                ]
+              }
+            },
+            {
+              _id: '3',
+              _rev: '4-ccc',
+              value: 'z',
+              _revisions: {
+                start: 4,
+                ids: [
+                  'ccc',
+                  'even',
+                  'more',
+                  pRevId
+                ]
+              }
+            }
+          ];
+          db.put(conflicts[0], { new_edits: false }, function () {
+            db.put(conflicts[1], { new_edits: false }, function () {
+              db.put(conflicts[2], { new_edits: false }, function () {
+                db.get('3', { rev: '2-aaa' }, function (err, doc) {
+                  doc._rev.should.equal('2-aaa');
+                  doc.value.should.equal('x');
+                  db.get('3', { rev: '3-bbb' }, function (err, doc) {
+                    doc._rev.should.equal('3-bbb');
+                    doc.value.should.equal('y');
+                    db.get('3', { rev: '4-ccc' }, function (err, doc) {
+                      doc._rev.should.equal('4-ccc');
+                      doc.value.should.equal('z');
+                      done();
                     });
                   });
                 });
@@ -395,7 +389,7 @@ adapters.forEach(function (adapter) {
         });
       }
 
-      return PouchDB.utils.Promise.all(tasks.map(function (task) {
+      return testUtils.Promise.all(tasks.map(function (task) {
         return getDocWithDefault(db, task, {foo: 'bar'});
       }));
     });
@@ -433,7 +427,7 @@ adapters.forEach(function (adapter) {
         });
       }
 
-      return PouchDB.utils.Promise.all(tasks.map(function (task) {
+      return testUtils.Promise.all(tasks.map(function (task) {
         return getDocWithDefault(db, task, {foo: 'bar'});
       }));
     });
@@ -583,6 +577,10 @@ adapters.forEach(function (adapter) {
     });
 
     it('Testing get with some open_revs', function (done) {
+      // TODO: CouchDB master fails, needs investigation
+      if (testUtils.isCouchMaster()) {
+        return done();
+      }
       var db = new PouchDB(dbs.name);
       testUtils.writeDocs(db, JSON.parse(JSON.stringify(origDocs)),
         function () {
@@ -734,5 +732,512 @@ adapters.forEach(function (adapter) {
       });
     });
 
+    it('#5883 Testing with duplicate rev hash', function (done) {
+      var db = new PouchDB(dbs.name);
+      db.bulkDocs([
+          {
+            "_id": "foo",
+            "_rev": "3-deleted",
+            "_deleted": true,
+            "_revisions": {
+                "start": 3,
+                "ids": ["deleted", "0a21b4bd4399b51e144a06b126031edc", "created"]
+            }
+          },
+          {
+            "_id": "foo",
+            "_rev": "3-0a21b4bd4399b51e144a06b126031edc",
+            "_revisions": {
+                "start": 3,
+                "ids": ["0a21b4bd4399b51e144a06b126031edc", "updated", "created"]
+            }
+          }
+        ], { new_edits: false
+      }).then(function () {
+        return db.get('foo', { revs: true });
+      }).then(function (doc) {
+        doc._revisions.start.should.equal(3);
+        doc._revisions.ids.should.eql(["0a21b4bd4399b51e144a06b126031edc", "updated", "created"]);
+        done();
+      }).catch(done);
+    });
+
+    it('5857 - open_revs with latest=true', function () {
+      var db = new PouchDB(dbs.name);
+      var first = null;
+      return db.post({ version: 'first' })
+        .then(function (info) {
+          first = info.rev;
+          return db.put({
+          _id: info.id,
+          _rev: info.rev,
+          version: 'second'
+        }).then(function (info) {
+          return db.get(info.id, {
+            open_revs: [first],
+            latest:true
+          });
+        }).then(function (result) {
+          result[0].ok.version.should.equal('second');
+        });
+      });
+    });
+
+    it('5857 - multiple open_revs for the same branch with latest=true returns one result', function () {
+      var db = new PouchDB(dbs.name);
+      var first = null;
+      return db.post({ version: 'first' })
+        .then(function (info) {
+          first = info.rev;
+          return db.put({
+          _id: info.id,
+          _rev: info.rev,
+          version: 'second'
+        }).then(function (info) {
+          return db.get(info.id, {
+            open_revs: [first, info.rev],
+            latest:true
+          });
+        }).then(function (result) {
+          result.length.should.equal(1);
+          result[0].ok.version.should.equal('second');
+        });
+      });
+    });
+
+    it('5857 - GET old revision with latest=true', function () {
+      var db = new PouchDB(dbs.name);
+      var first = null;
+      return db.post({ version: 'first' })
+        .then(function (info) {
+          first = info.rev;
+          return db.put({
+          _id: info.id,
+          _rev: info.rev,
+          version: 'second'
+        }).then(function (info) {
+          return db.get(info.id, {
+            rev: first,
+            latest:true
+          });
+        }).then(function (result) {
+          result.version.should.equal('second');
+        });
+      });
+    });
+
+    it('5857 - GET old revision with latest=true, deleted leaf', function () {
+      var db = new PouchDB(dbs.name);
+      var first = null;
+      return db.post({ version: 'first' })
+        .then(function (info) {
+          first = info.rev;
+          return db.put({
+          _id: info.id,
+          _rev: info.rev,
+          _deleted: true,
+          version: 'second'
+        }).then(function (info) {
+          return db.get(info.id, {
+            rev: first,
+            latest:true
+          });
+        }).then(function (result) {
+          result._deleted.should.equal(true);
+          result.version.should.equal('second');
+        });
+      });
+    });
+
+    it('5857 - GET losing, old revision with latest=true', function () {
+      var db = new PouchDB(dbs.name);
+      var doctree = [
+        {
+          _id: 'mydoc',
+          _rev: '1-a',
+          value: 'first',
+          _revisions: {
+            start: 1,
+            ids: [
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b1',
+          value: 'x-winning',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c1',
+          value: 'y-winning',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b2',
+          value: 'x-losing',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c2',
+          value: 'y-losing',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c2',
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '4-d1',
+          value: 'z-winning',
+          _revisions: {
+            start: 4,
+            ids: [
+              'd1',
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        }
+      ];
+      return db.bulkDocs(doctree, { new_edits: false })
+        .then(function () {
+          return db.get('mydoc', {
+            rev: '2-b2',
+            latest: true
+          });
+        }).then(function (result) {
+          result._rev.should.equal('3-c2');
+        });
+    });
+
+    it('5857 - GET open_revs losing, old revision with latest=true', function () {
+      var db = new PouchDB(dbs.name);
+      var doctree = [
+        {
+          _id: 'mydoc',
+          _rev: '1-a',
+          value: 'first',
+          _revisions: {
+            start: 1,
+            ids: [
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b1',
+          value: 'x-winning',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c1',
+          value: 'y-winning',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b2',
+          value: 'x-losing',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c2',
+          value: 'y-losing',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c2',
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '4-d1',
+          value: 'z-winning',
+          _revisions: {
+            start: 4,
+            ids: [
+              'd1',
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        }
+      ];
+      return db.bulkDocs(doctree, { new_edits: false })
+        .then(function () {
+          return db.get('mydoc', {
+            open_revs: ['2-b2', '3-c2'],
+            latest: true
+          });
+        }).then(function (result) {
+          result.length.should.equal(1);
+          result[0].ok._rev.should.equal('3-c2');
+        });
+    });
+
+    it('5857 - GET open_revs losing and winning branches with latest=true', function () {
+      var db = new PouchDB(dbs.name);
+      var doctree = [
+        {
+          _id: 'mydoc',
+          _rev: '1-a',
+          value: 'first',
+          _revisions: {
+            start: 1,
+            ids: [
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b1',
+          value: 'x-winning',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c1',
+          value: 'y-winning',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '2-b2',
+          value: 'x-losing',
+          _revisions: {
+            start: 2,
+            ids: [
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '3-c2',
+          value: 'y-losing',
+          _revisions: {
+            start: 3,
+            ids: [
+              'c2',
+              'b2',
+              'a'
+            ]
+          }
+        },
+        {
+          _id: 'mydoc',
+          _rev: '4-d1',
+          value: 'z-winning',
+          _revisions: {
+            start: 4,
+            ids: [
+              'd1',
+              'c1',
+              'b1',
+              'a'
+            ]
+          }
+        }
+      ];
+      return db.bulkDocs(doctree, { new_edits: false })
+        .then(function () {
+          return db.get('mydoc', {
+            open_revs: ['2-b1', '2-b2'],
+            latest: true
+          });
+        }).then(function (result) {
+          result.length.should.equal(2);
+          result[0].ok._rev.should.equal('4-d1');
+          result[1].ok._rev.should.equal('3-c2');
+        });
+    });
+
+  it.skip('These fail due to COUCHDB-3239 and COUCHDB-3240', function () {
+    it('5857 - GET latest=true with conflicting parent revs', function () {
+        var db = new PouchDB(dbs.name);
+        var doctree = [
+          {
+            _id: 'mydoc',
+            _rev: '1-a',
+            value: 'first',
+            _revisions: {
+              start: 1,
+              ids: [
+                'a'
+              ]
+            }
+          },
+          {
+            _id: 'mydoc',
+            _rev: '2-b1',
+            value: 'x-winning',
+            _revisions: {
+              start: 2,
+              ids: [
+                'b1',
+                'a'
+              ]
+            }
+          },
+          {
+            _id: 'mydoc',
+            _rev: '3-c1',
+            value: 'y-winning',
+            _revisions: {
+              start: 3,
+              ids: [
+                'c1',
+                'b1',
+                'a'
+              ]
+            }
+          },
+          {
+            _id: 'mydoc',
+            _rev: '2-b2',
+            value: 'x-losing',
+            _revisions: {
+              start: 2,
+              ids: [
+                'b2',
+                'a'
+              ]
+            }
+          }
+        ];
+        return db.bulkDocs(doctree, { new_edits: false })
+          .then(function () {
+            return db.get('mydoc', {
+              rev: '1-a',
+              latest: true
+            });
+          }).then(function (result) {
+            result.length.should.equal(1);
+            result[0].ok._rev.should.equal('3-c1');
+          });
+      });
+
+      it('5857 - GET latest=true with deleted conflict parent revs', function () {
+        var db = new PouchDB(dbs.name);
+        var doctree = [
+          {
+            _id: 'mydoc',
+            _rev: '1-a',
+            value: 'first',
+            _revisions: {
+              start: 1,
+              ids: [
+                'a'
+              ]
+            }
+          },
+          {
+            _id: 'mydoc',
+            _rev: '2-b1',
+            value: 'x-winning',
+            _revisions: {
+              start: 2,
+              ids: [
+                'b1',
+                'a'
+              ]
+            }
+          },
+          {
+            _id: 'mydoc',
+            _rev: '2-b2',
+            _deleted: true,
+            value: 'x-losing',
+            _revisions: {
+              start: 2,
+              ids: [
+                'b2',
+                'a'
+              ]
+            }
+          }
+        ];
+        return db.bulkDocs(doctree, { new_edits: false })
+          .then(function () {
+            return db.get('mydoc', {
+              rev: '1-a',
+              latest: true
+            });
+          }).then(function (result) {
+            result.length.should.equal(1);
+            result[0].ok._rev.should.equal('2-b1');
+          });
+      });
+    });
   });
 });

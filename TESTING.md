@@ -25,6 +25,11 @@ or you can run:
 
 and open [http://127.0.0.1:8000/tests/integration/index.html](http://127.0.0.1:8000/tests/integration/index.html) in your browser of choice. The performance tests are located @ [http://localhost:8000/tests/performance/index.html](http://localhost:8000/tests/performance/index.html).
 
+You can also test against phantomjs, but you'll need to install phantomjs yourself:
+
+    $ npm install phantomjs-prebuilt
+    $ CLIENT=selenium:phantomjs npm test
+
 ### Unit tests
 
     $ npm run build-as-modular-es5
@@ -43,8 +48,7 @@ or append `?grep=test.replication.js` if you opened the tests in a browser manua
 
 #### Test Coverage
 
-    $ npm run build-as-modular-es5
-    $ COVERAGE=1 npm test
+    $ npm run test-coverage
 
 Again, this uses `npm run build-as-modular-es5` in order to fully test the codebase
 as a non-bundle. See `build-as-modular-es5.sh` for details.
@@ -60,8 +64,15 @@ or
 #### Other test options
 
 * `SKIP_MIGRATION=1` should be used to skip the migration tests.
+* `NEXT=1` will test pouchdb-next (PouchDB with v2 IndexedDB adapter).
 * `POUCHDB_SRC=../../dist/pouchdb.js` can be used to treat another file as the PouchDB source file.
 * `npm run test-webpack` will build with Webpack and then test that in a browser.
+
+#### Test against custom Firefox
+
+You can specify a custom Firefox path using `FIREFOX_BIN`
+
+    $ FIREFOX_BIN=/path/to/firefox npm run test-browser
 
 #### Run the map/reduce tests
 
@@ -70,58 +81,6 @@ they take a long time. They'll also cause a ton of popups in Safari due to excee
 the 5MB limit.
 
     $ TYPE=mapreduce npm test
-
-### Cordova tests
-
-You may need to install `ant` in order for the Android tests to run (e.g. `brew install ant`). You'll also need the Android SDK, and to make sure your `$ANDROID_HOME` is set.
-
-Run the tests against an iOS simulator:
-
-    $ CLIENT=ios npm run cordova
-
-Run the tests against a connected Android device, using the given COUCH_HOST
-
-    $ CLIENT=android DEVICE=true COUCH_HOST=http://example.com:5984
-
-Run the tests against the FirefoxOS simulator:
-
-    $ CLIENT=firefoxos npm run cordova
-
-Run the tests against a BlackBerry 10 device:
-
-    $ CLIENT=blackberry10 DEVICE=true npm run cordova
-
-Use a custom Couch host:
-
-    $ COUCH_HOST=http://myurl:5984 npm run cordova
-
-Grep some tests:
-
-    $ GREP=basics npm run cordova
-
-Test against the [SQLite Plugin](https://github.com/brodysoft/Cordova-SQLitePlugin):
-
-    $ SQLITE_PLUGIN=true ADAPTERS=websql npm run cordova
-
-**Notes:**
-
-* `CLIENT=ios` will run on iOS, default is `CLIENT=android`
-* `DEVICE=true` will run on a device connected via USB, else on an emulator (default is the emulator)
-* `SQLITE_PLUGIN=true` will install and use the [SQLite Plugin](https://github.com/brodysoft/Cordova-SQLitePlugin).
-* `ADAPTERS=websql` should be used if you want to skip using IndexedDB on Android 4.4+ or if you want to force the SQLite Plugin.
-* `COUCH_HOST` should be the full URL; you can only omit this is in the Android emulator due to the magic `10.0.2.2` route to `localhost`.
-* `ES5_SHIM=true` should be used on devices that don't support ES5 (e.g. Android 2.x).
-
-**WEINRE debugging:**
-
-You can also debug with Weinre by doing:
-
-    $ npm install -g weinre
-    $ weinre --boundHost=0.0.0.0
-
-Then run the tests with:
-
-    $ WEINRE_HOST=http://route.to.my.weinre:8080 npm run cordova
 
 ### Testing against PouchDB server
 
@@ -142,25 +101,23 @@ Then in the PouchDB project, run:
 
 This works because `npm run dev` does not start up the pouchdb-server itself (only `npm test` does).
 
-### Testing the in-memory adapter
+Note that you must `npm install pouchdb-server` or `npm install express-pouchdb` yourself for this test to work.
 
-`pouchdb-server` uses the `--in-memory` flag to use MemDOWN.  To enable this, set
+### Testing different Node adapters
 
-    SERVER_ADAPTER=memory
+Use this option to test the in-memory adapter:
 
-Whereas on the client this is configured using `PouchDB.defaults()`, so you can enable it like so:
-
-    LEVEL_ADAPTER=memdown
-
-The value is a comma-separated list of key values, where the key-values are separated by colons.
-
-Some Level adapters also require a standard database name prefix (e.g. `riak://` or `mysql://`), which you can specify like so:
-
-    LEVEL_PREFIX=riak://localhost:8087/
+    ADAPTER=memory
 
 To run the node-websql test in Node, run the tests with:
 
     ADAPTER=websql
+
+### Testing fetch vs XMLHttpRequest
+
+PouchDB falls back to either XHR or fetch, whichever is available. You can test fetch-only using:
+
+    FETCH=1 npm test
 
 ### Performance tests
 
@@ -172,9 +129,17 @@ Or the automated browser runner:
 
     PERF=1 CLIENT=selenium:firefox npm test
 
-You can also use `GREP` to run certain tests, or `LEVEL_ADAPTER` to use a certain *down adapter:
+You can also use `GREP` to run certain tests:
 
-    PERF=1 GREP=basic-inserts LEVEL_ADAPTER=memdown npm test
+    PERF=1 GREP=basic-inserts npm test
+
+You can also use `LEVEL_ADAPTER` to use a certain "DOWN" adapter:
+
+    PERF=1 LEVEL_ADAPTER=memdown npm test
+
+You can also test against node-websql:
+
+    PERF=1 ADAPTER=websql npm test
 
 ### Performance tests in the browser
 
@@ -202,6 +167,12 @@ There's a WebSQL storage quota test available in:
     http://127.0.0.1:8000/tests/stress/websql_storage_limit.html
 
 Run `npm run dev`, then open it in Safari or iOS.
+
+### Build tests
+
+To verify that the build was done correctly, there are some tests here:
+
+    npm run verify-build
 
 Adapter plugins and adapter order
 --------------------------------------

@@ -1,9 +1,10 @@
 tmp
 .DS_Store
-node_modules
+/node_modules
 docs/_site
 docs/static/css
 npm-debug.log
+npm-debug.log.*
 *~
 coverage
 bower_components
@@ -12,8 +13,11 @@ tests/integration/cordova/www
 phantomjsdriver.log
 tests/pouchdb_server
 tests/performance-bundle.js
-dist/*
+packages/node_modules/pouchdb/dist/*
 pouchdb-webpack.js
 lib
 lib_unit
 src_browser/
+lerna-debug.log
+tests/integration/utils-bundle.js
+*.heapsnapshot
