@@ -16,9 +16,8 @@ npm install
 VERSION=$(node --eval "console.log(require('./packages/node_modules/pouchdb/package.json').version);")
 
 # Create a temporary build directory
-SOURCE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-BUILD_BRANCH=build_"${RANDOM}"
-git checkout -b $BUILD_BRANCH
+BUILD_DIR=build_"${RANDOM}"
+git checkout -b $BUILD_DIR
 
 # Update dependency versions inside each package.json (replace the "*")
 node bin/update-dependencies.js
@@ -58,7 +57,7 @@ if [ -z $DRY_RUN ]; then
     git push --tags git@github.com:pouchdb/pouchdb.git $VERSION
 
     # Cleanup
-    git checkout $SOURCE_BRANCH
-    git branch -D $BUILD_BRANCH
+    git checkout master
+    git branch -D $BUILD_DIR
   fi
 fi
